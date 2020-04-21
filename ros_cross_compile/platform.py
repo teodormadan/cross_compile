@@ -84,10 +84,10 @@ class Platform:
             raise ValueError(
                 'OS "{}" not supported for ROS distro "{}"'.format(os_name, ros_distro))
 
+        self._os_distro = ROSDISTRO_OS_MAP[self.ros_distro][self.os_name]
         if override_base_image:
             self._docker_target_base = override_base_image
         else:
-            self._os_distro = ROSDISTRO_OS_MAP[self.ros_distro][self.os_name]
             native_base = '{}:{}'.format(self.os_name, self.os_distro)
             if docker_org:
                 self._docker_target_base = '{}/{}'.format(docker_org, native_base)

@@ -112,3 +112,4 @@ def test_override_base():
     override = 'arm128v12/ubuntu:quintessential'
     platform = Platform('aarch64', 'ubuntu', 'dashing', override)
     assert platform.target_base_image == override
+    assert platform.os_distro == 'bionic'
