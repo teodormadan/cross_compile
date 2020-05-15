@@ -33,7 +33,7 @@ from ros_cross_compile.platform import SUPPORTED_ARCHITECTURES
 from ros_cross_compile.platform import SUPPORTED_ROS2_DISTROS
 from ros_cross_compile.platform import SUPPORTED_ROS_DISTROS
 from ros_cross_compile.runtime import create_runtime_image
-from ros_cross_compile.sysroot_creator import create_workspace_sysroot_image
+from ros_cross_compile.sysroot_creator import create_workspace_sysroot
 from ros_cross_compile.sysroot_creator import prepare_docker_build_environment
 
 logging.basicConfig(level=logging.INFO)
@@ -167,11 +167,12 @@ def cross_compile_pipeline(
             custom_script=custom_rosdep_script,
             custom_data_dir=custom_data_dir)
     assert_install_rosdep_script_exists(ros_workspace_dir, platform)
-    create_workspace_sysroot_image(docker_client, platform)
-    run_emulated_docker_build(docker_client, platform, ros_workspace_dir)
-    if args.create_runtime_image is not None:
-        create_runtime_image(
-            docker_client, platform, ros_workspace_dir, args.create_runtime_image)
+    create_workspace_sysroot(docker_client, platform)
+    # create_workspace_sysroot_image(docker_client, platform)
+    # run_emulated_docker_build(docker_client, platform, ros_workspace_dir)
+    # if args.create_runtime_image is not None:
+    #     create_runtime_image(
+    #         docker_client, platform, ros_workspace_dir, args.create_runtime_image)
 
 
 def main():

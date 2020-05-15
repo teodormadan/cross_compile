@@ -95,7 +95,7 @@ def prepare_docker_build_environment(
     return docker_build_dir
 
 
-def create_workspace_sysroot_image(
+def create_workspace_sysroot(
     docker_client: DockerClient,
     platform: Platform,
 ) -> None:
@@ -104,7 +104,6 @@ def create_workspace_sysroot_image(
 
     :param docker_client Docker client to use for building
     :param platform Information about the target platform
-    :param build_context Directory containing all assets needed by sysroot.Dockerfile
     """
     image_tag = platform.sysroot_image_tag
 

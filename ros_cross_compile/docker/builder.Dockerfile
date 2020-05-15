@@ -1,17 +1,18 @@
-# This file creates the root filesystem for the workspace to build against
-# It installs all build, run, and test dependencies for the workspace
-# It uses QEmu user-mode emulation to perform this dependency installation
-# Assumptions: bin/ directory in the docker build context contains the necessary qemu binary
+# This file describes an image that has everything necessary installed to build a target ROS workspace
+# It uses QEmu user-mode emulation to perform dependency installation and build
+# Assumptions: qemu-user-static directory is present in docker build context
 
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
 SHELL ["/bin/bash", "-c"]
+
 COPY bin/* /usr/bin/
 
 # Set timezone
 RUN echo 'Etc/UTC' > /etc/timezone && \
     ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime
+
 RUN apt-get update && apt-get install --no-install-recommends -y \
         tzdata \
         locales \
@@ -23,12 +24,6 @@ RUN echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && \
     update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 ENV LANG en_US.UTF-8
 ENV LC_ALL C.UTF-8
-
-# Extra package managers for installing dependencies
-RUN apt-get update && apt-get install --no-install-recommends -y \
-      python3-pip \
-      python3-setuptools \
-    && rm -rf /var/lib/apt/lists/*
 
 # Add the ros apt repo
 RUN apt-get update && apt-get install --no-install-recommends -y \
@@ -42,6 +37,19 @@ RUN apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' \
 ARG ROS_VERSION
 RUN echo "deb http://packages.ros.org/${ROS_VERSION}/ubuntu `lsb_release -cs` main" \
     > /etc/apt/sources.list.d/${ROS_VERSION}-latest.list
+
+# ROS dependencies
+RUN apt-get update && apt-get install --no-install-recommends -y \
+      build-essential \
+      cmake \
+      python3-colcon-common-extensions \
+      python3-colcon-mixin \
+      python3-dev \
+      python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install -U \
+    setuptools
 
 # Install some pip packages needed for testing ROS 2
 RUN if [[ "${ROS_VERSION}" == "ros2" ]]; then \
@@ -83,3 +91,11 @@ RUN chmod +x install_rosdeps.sh
 RUN apt-get update && \
     ./install_rosdeps.sh && \
     rm -rf /var/lib/apt/lists/*
+
+# Set up build tools for the workspace
+COPY mixins/ mixins/
+RUN colcon mixin add cc_mixin file://$(pwd)/mixins/index.yaml && colcon mixin update cc_mixin
+# In case the workspace did not actually install any dependencies, add these for uniformity
+COPY build_workspace.sh /root
+WORKDIR /ros_ws
+ENTRYPOINT ["/root/build_workspace.sh"]
