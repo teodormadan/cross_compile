@@ -28,14 +28,12 @@ ENV LC_ALL C.UTF-8
 RUN apt-get update && apt-get install --no-install-recommends -y \
       python3-pip \
       python3-setuptools \
+      dirmngr \
+      gnupg2 \
+      lsb-release \
     && rm -rf /var/lib/apt/lists/*
 
 # Add the ros apt repo
-RUN apt-get update && apt-get install --no-install-recommends -y \
-        dirmngr \
-        gnupg2 \
-        lsb-release \
-    && rm -rf /var/lib/apt/lists/*
 RUN apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' \
     --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
 

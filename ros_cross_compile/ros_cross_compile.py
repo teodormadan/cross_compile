@@ -133,6 +133,10 @@ def parse_args(args: List[str]) -> argparse.Namespace:
         '--create-runtime-image',
         help='Create a Docker image with the specified name that contains all '
              'runtime dependencies and the created "install" directory for the workspace.')
+    parser.add_argument(
+        '--sysroot-tag',
+        required=True,
+        help='SOITEn')
 
     return parser.parse_args(args)
 
@@ -167,7 +171,8 @@ def cross_compile_pipeline(
             custom_script=custom_rosdep_script,
             custom_data_dir=custom_data_dir)
     assert_install_rosdep_script_exists(ros_workspace_dir, platform)
-    create_workspace_sysroot(docker_client, platform)
+    create_workspace_sysroot(
+        docker_client, platform, sysroot_build_context, image_tag=args.sysroot_tag)
     # create_workspace_sysroot_image(docker_client, platform)
     # run_emulated_docker_build(docker_client, platform, ros_workspace_dir)
     # if args.create_runtime_image is not None:

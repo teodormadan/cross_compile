@@ -17,6 +17,7 @@ import logging
 from pathlib import Path
 import platform as py_platform
 import shutil
+import tarfile
 from typing import Optional
 
 from ros_cross_compile.docker_client import DockerClient
@@ -98,6 +99,8 @@ def prepare_docker_build_environment(
 def create_workspace_sysroot(
     docker_client: DockerClient,
     platform: Platform,
+    build_dir: str,
+    image_tag: str,
 ) -> None:
     """
     Create the target platform sysroot image.
@@ -105,7 +108,7 @@ def create_workspace_sysroot(
     :param docker_client Docker client to use for building
     :param platform Information about the target platform
     """
-    image_tag = platform.sysroot_image_tag
+    # image_tag = platform.sysroot_image_tag
 
     logger.info('Building sysroot image: %s', image_tag)
     docker_client.build_image(
@@ -117,3 +120,8 @@ def create_workspace_sysroot(
         }
     )
     logger.info('Successfully created sysroot docker image: %s', image_tag)
+    fs = docker_client.export_image_filesystem(image_tag)
+    logger.info('Exporting and extracting sysroot')
+    fs_out = build_dir.parent / (build_dir.name + '-sysroot')
+    shutil.rmtree(str(fs_out))
+    fs.extractall(fs_out)

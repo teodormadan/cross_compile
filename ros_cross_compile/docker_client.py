@@ -139,3 +139,13 @@ class DockerClient:
         if exit_code:
             raise docker.errors.ContainerError(
                 image_name, exit_code, '', image_name, 'See above ^')
+
+    def export_image_filesystem(self, image_tag: str):
+        import io
+        import tarfile
+        container = self._client.containers.run(image=image_tag, detach=True)
+        export_response = container.export()
+        tar_bytes = export_response.read()
+        tar_file = io.BytesIO(tar_bytes)
+        tar = tarfile.open(fileobj=tar_file)
+        return tar
