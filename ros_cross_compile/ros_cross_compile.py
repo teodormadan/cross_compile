@@ -23,18 +23,18 @@ import sys
 from typing import List
 from typing import Optional
 
-from ros_cross_compile.builders import run_emulated_docker_build
 from ros_cross_compile.data_collector import DataCollector
 from ros_cross_compile.data_collector import DataWriter
 from ros_cross_compile.dependencies import assert_install_rosdep_script_exists
 from ros_cross_compile.dependencies import gather_rosdeps
 from ros_cross_compile.docker_client import DEFAULT_COLCON_DEFAULTS_FILE
 from ros_cross_compile.docker_client import DockerClient
+from ros_cross_compile.pipeline_stages import CreateSysrootStage
+from ros_cross_compile.pipeline_stages import RunDockerBuildStage
 from ros_cross_compile.platform import Platform
 from ros_cross_compile.platform import SUPPORTED_ARCHITECTURES
 from ros_cross_compile.platform import SUPPORTED_ROS2_DISTROS
 from ros_cross_compile.platform import SUPPORTED_ROS_DISTROS
-from ros_cross_compile.sysroot_creator import create_workspace_sysroot_image
 from ros_cross_compile.sysroot_creator import prepare_docker_build_environment
 
 logging.basicConfig(level=logging.INFO)
@@ -147,6 +147,7 @@ def parse_args(args: List[str]) -> argparse.Namespace:
 
 def cross_compile_pipeline(
     args: argparse.Namespace,
+    data_collector: DataCollector,
 ):
     platform = Platform(args.arch, args.os, args.rosdistro, args.sysroot_base_image)
 
@@ -175,8 +176,18 @@ def cross_compile_pipeline(
             custom_script=custom_rosdep_script,
             custom_data_dir=custom_data_dir)
     assert_install_rosdep_script_exists(ros_workspace_dir, platform)
-    create_workspace_sysroot_image(docker_client, platform)
-    run_emulated_docker_build(docker_client, platform, ros_workspace_dir)
+
+    stages = (CreateSysrootStage, RunDockerBuildStage)
+    for stage in stages:
+        current_stage = stage(data_collector)
+        current_stage(
+            platform,
+            docker_client,
+            ros_workspace_dir,
+            skip_rosdep_keys,
+            custom_rosdep_script,
+            custom_data_dir
+        )
 
 
 def main():
@@ -188,7 +199,7 @@ def main():
 
     try:
         with data_collector.data_timer('cross_compile_end_to_end'):
-            cross_compile_pipeline(args)
+            cross_compile_pipeline(args, data_collector)
     finally:
         data_writer.write(data_collector)
 
