@@ -23,18 +23,18 @@ import sys
 from typing import List
 from typing import Optional
 
+from ros_cross_compile.builders import RunDockerBuildStage
 from ros_cross_compile.data_collector import DataCollector
 from ros_cross_compile.data_collector import DataWriter
-from ros_cross_compile.dependencies import assert_install_rosdep_script_exists
-from ros_cross_compile.dependencies import gather_rosdeps
+from ros_cross_compile.dependencies import DependenciesStage
 from ros_cross_compile.docker_client import DEFAULT_COLCON_DEFAULTS_FILE
 from ros_cross_compile.docker_client import DockerClient
-from ros_cross_compile.pipeline_stages import CreateSysrootStage
-from ros_cross_compile.pipeline_stages import RunDockerBuildStage
+from ros_cross_compile.pipeline_stages import ConfigOptions
 from ros_cross_compile.platform import Platform
 from ros_cross_compile.platform import SUPPORTED_ARCHITECTURES
 from ros_cross_compile.platform import SUPPORTED_ROS2_DISTROS
 from ros_cross_compile.platform import SUPPORTED_ROS_DISTROS
+from ros_cross_compile.sysroot_creator import CreateSysrootStage
 from ros_cross_compile.sysroot_creator import prepare_docker_build_environment
 
 logging.basicConfig(level=logging.INFO)
@@ -157,6 +157,10 @@ def cross_compile_pipeline(
     custom_rosdep_script = _path_if(args.custom_rosdep_script)
     custom_setup_script = _path_if(args.custom_setup_script)
 
+    stage_customizations = ConfigOptions(args.skip_rosdep_collection, skip_rosdep_keys,
+                                         custom_rosdep_script, custom_data_dir,
+                                         custom_setup_script)
+
     sysroot_build_context = prepare_docker_build_environment(
         platform=platform,
         ros_workspace=ros_workspace_dir,
@@ -167,27 +171,15 @@ def cross_compile_pipeline(
         default_docker_dir=sysroot_build_context,
         colcon_defaults_file=args.colcon_defaults)
 
-    if not args.skip_rosdep_collection:
-        gather_rosdeps(
-            docker_client=docker_client,
-            platform=platform,
-            workspace=ros_workspace_dir,
-            skip_rosdep_keys=skip_rosdep_keys,
-            custom_script=custom_rosdep_script,
-            custom_data_dir=custom_data_dir)
-    assert_install_rosdep_script_exists(ros_workspace_dir, platform)
-
-    stages = (CreateSysrootStage, RunDockerBuildStage)
+    stages = (DependenciesStage(), CreateSysrootStage(), RunDockerBuildStage())
     for stage in stages:
-        current_stage = stage(data_collector)
-        current_stage(
-            platform,
-            docker_client,
-            ros_workspace_dir,
-            skip_rosdep_keys,
-            custom_rosdep_script,
-            custom_data_dir
-        )
+        with data_collector.data_timer(stage.name):
+            stage(
+                platform,
+                docker_client,
+                ros_workspace_dir,
+                stage_customizations
+            )
 
 
 def main():

@@ -16,6 +16,8 @@ import os
 from pathlib import Path
 
 from ros_cross_compile.docker_client import DockerClient
+from ros_cross_compile.pipeline_stages import ConfigOptions
+from ros_cross_compile.pipeline_stages import PipelineStage
 from ros_cross_compile.platform import Platform
 
 logging.basicConfig(level=logging.INFO)
@@ -45,3 +47,14 @@ def run_emulated_docker_build(
             workspace_path: '/ros_ws',
         },
     )
+
+
+class RunDockerBuildStage(PipelineStage):
+    """Represents stage that actually performs the cross compilation in a Docker image."""
+
+    def __init__(self):
+        self.name = run_emulated_docker_build.__name__
+
+    def __call__(self, platform: Platform, docker_client: DockerClient, ros_workspace_dir: Path,
+                 customizations: ConfigOptions):
+        run_emulated_docker_build(docker_client, platform, ros_workspace_dir)
