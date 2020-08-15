@@ -16,7 +16,10 @@ import logging
 import os
 from pathlib import Path
 
+from ros_cross_compile.data_collector import DataCollector
 from ros_cross_compile.docker_client import DockerClient
+from ros_cross_compile.pipeline_stages import PipelineStage
+from ros_cross_compile.pipeline_stages import PipelineStageConfigOptions
 from ros_cross_compile.platform import Platform
 
 logging.basicConfig(level=logging.INFO)
@@ -39,3 +42,20 @@ def create_runtime_image(
             'INSTALL_PATH': 'install_{}'.format(platform.arch),
         },
     )
+
+
+class PackageRuntimeImage(PipelineStage):
+    """
+    This stage determines what external dependencies are needed for building.
+
+    It outputs a script into the internals directory that will install those
+    dependencies for the target platform.
+    """
+
+    def __init__(self):
+        super().__init__('package_runtime')
+
+    def __call__(self, platform: Platform, docker_client: DockerClient, ros_workspace_dir: Path,
+                 pipeline_stage_config_options: PipelineStageConfigOptions,
+                 data_collector: DataCollector):
+        create_runtime_image(docker_client, platform, ros_workspace_dir, 'cc-runtime')

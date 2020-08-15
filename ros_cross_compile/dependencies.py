@@ -100,7 +100,7 @@ def assert_install_rosdep_script_exists(
     return True
 
 
-class DependenciesStage(PipelineStage):
+class CollectDependencies(PipelineStage):
     """
     This stage determines what external dependencies are needed for building.
 

@@ -137,7 +137,8 @@ def create_workspace_sysroot(
     fs.extractall(sysroot_destination)
     fs.close()
 
-class CreateSysrootStage(PipelineStage):
+
+class CreateSysroot(PipelineStage):
     """
     This stage creates the target platform Docker sysroot image.
 
@@ -150,7 +151,4 @@ class CreateSysrootStage(PipelineStage):
     def __call__(self, platform: Platform, docker_client: DockerClient, ros_workspace_dir: Path,
                  pipeline_stage_config_options: PipelineStageConfigOptions,
                  data_collector: DataCollector):
-        create_workspace_sysroot_image(docker_client, platform)
-
-        img_size = docker_client.get_image_size(platform.sysroot_image_tag)
-        data_collector.add_size(self.name, img_size)
+        create_workspace_sysroot(docker_client, platform, ros_workspace_dir)
