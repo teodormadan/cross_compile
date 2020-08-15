@@ -2,20 +2,20 @@ FROM ubuntu:focal
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Common for all
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN apt-get update && apt-get install --no-install-recommends -q -y \
     build-essential \
     cmake \
     python3-pip \
-    wget \
-  && rm -rf /var/lib/apt/lists/*
+    wget
 
 RUN pip3 install colcon-common-extensions colcon-mixin
 
 # Specific at the end (layer sharing)
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN apt-get update && apt-get install --no-install-recommends -q -y \
     gcc-aarch64-linux-gnu \
-    g++-aarch64-linux-gnu \
-  && rm -rf /var/lib/apt/lists/*
+    g++-aarch64-linux-gnu
+
+RUN apt-get update && apt-get install -q -y --no-install-recommends rsync
 
 RUN pip3 install lark-parser numpy
 
