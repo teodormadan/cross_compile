@@ -35,6 +35,11 @@ def build_internals_dir(platform: Platform) -> Path:
     return Path(INTERNALS_DIR) / str(platform)
 
 
+def rosdep_install_script(platform: Platform) -> Path:
+    """Construct relative path of the script that installs rosdeps into the sysroot image."""
+    return build_internals_dir(platform) / 'install_rosdeps.sh'
+
+
 def _copytree(src: Path, dest: Path) -> None:
     """Copy contents of directory 'src' into 'dest'."""
     copy_tree(str(src), str(dest))
@@ -43,6 +48,18 @@ def _copytree(src: Path, dest: Path) -> None:
 def _copyfile(src: Path, dest: Path) -> None:
     """Copy a single file to a destination location."""
     shutil.copy(str(src), str(dest))
+
+
+def assert_install_rosdep_script_exists(
+    ros_workspace_dir: Path,
+    platform: Platform
+) -> bool:
+    install_rosdep_script_path = ros_workspace_dir / rosdep_install_script(platform)
+    if not install_rosdep_script_path.is_file():
+        raise RuntimeError(
+            'Rosdep installation script has never been created, you need to run this without '
+            'skipping rosdep collection at least once.')
+    return True
 
 
 def setup_emulator(arch: str, output_dir: Path) -> None:
@@ -116,6 +133,7 @@ def create_workspace_sysroot(
     image_tag = platform.sysroot_image_tag
     sysroot_destination = (ros_workspace / build_internals_dir(platform)).parent / 'sysroot'
 
+    assert_install_rosdep_script_exists(ros_workspace, platform)
     logger.info('Building sysroot image: %s', image_tag)
     docker_client.build_image(
         dockerfile_name='sysroot.Dockerfile',
@@ -146,7 +164,7 @@ class CreateSysroot(PipelineStage):
     """
 
     def __init__(self):
-        super().__init__('create_workspace_sysroot_image')
+        super().__init__('create_sysroot')
 
     def __call__(self, platform: Platform, docker_client: DockerClient, ros_workspace_dir: Path,
                  pipeline_stage_config_options: PipelineStageConfigOptions,

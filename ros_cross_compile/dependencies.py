@@ -23,7 +23,7 @@ from ros_cross_compile.docker_client import DockerClient
 from ros_cross_compile.pipeline_stages import PipelineStage
 from ros_cross_compile.pipeline_stages import PipelineStageConfigOptions
 from ros_cross_compile.platform import Platform
-from ros_cross_compile.sysroot_creator import build_internals_dir
+from ros_cross_compile.sysroot_creator import build_internals_dir, rosdep_install_script
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('Rosdep Gatherer')
@@ -34,9 +34,6 @@ CUSTOM_DATA = '/usercustom/custom-data'
 _IMG_NAME = 'ros_cross_compile:rosdep'
 
 
-def rosdep_install_script(platform: Platform) -> Path:
-    """Construct relative path of the script that installs rosdeps into the sysroot image."""
-    return build_internals_dir(platform) / 'install_rosdeps.sh'
 
 
 def gather_rosdeps(
@@ -88,18 +85,6 @@ def gather_rosdeps(
     )
 
 
-def assert_install_rosdep_script_exists(
-    ros_workspace_dir: Path,
-    platform: Platform
-) -> bool:
-    install_rosdep_script_path = ros_workspace_dir / rosdep_install_script(platform)
-    if not install_rosdep_script_path.is_file():
-        raise RuntimeError(
-            'Rosdep installation script has never been created, you need to run this without '
-            'skipping rosdep collection at least once.')
-    return True
-
-
 class CollectDependencies(PipelineStage):
     """
     This stage determines what external dependencies are needed for building.
@@ -124,15 +109,13 @@ class CollectDependencies(PipelineStage):
         """
         # NOTE: Stage skipping will be handled more generically in the future;
         # for now we handle this specific case internally to maintain the original API.
-        if not pipeline_stage_config_options.skip_rosdep_collection:
-            gather_rosdeps(
-                docker_client=docker_client,
-                platform=platform,
-                workspace=ros_workspace_dir,
-                skip_rosdep_keys=pipeline_stage_config_options.skip_rosdep_keys,
-                custom_script=pipeline_stage_config_options.custom_script,
-                custom_data_dir=pipeline_stage_config_options.custom_data_dir)
-        assert_install_rosdep_script_exists(ros_workspace_dir, platform)
+        gather_rosdeps(
+            docker_client=docker_client,
+            platform=platform,
+            workspace=ros_workspace_dir,
+            skip_rosdep_keys=pipeline_stage_config_options.skip_rosdep_keys,
+            custom_script=pipeline_stage_config_options.custom_script,
+            custom_data_dir=pipeline_stage_config_options.custom_data_dir)
 
         img_size = docker_client.get_image_size(_IMG_NAME)
         data_collector.add_size(self.name, img_size)

@@ -139,13 +139,6 @@ def parse_args(args: List[str]) -> argparse.Namespace:
         help='Relative path within the workspace to a file that provides colcon arguments. '
              'See "Package Selection and Build Customization" in README.md for more details.')
     parser.add_argument(
-        '--skip-rosdep-collection',
-        action='store_true',
-        required=False,
-        help='Skip querying rosdep for dependencies. This is intended to save time when running '
-             'repeatedly during development, but has undefined behavior if the dependencies of '
-             'the workspace have changed since the last time they were collected.')
-    parser.add_argument(
         '--skip-rosdep-keys',
         default=[],
         nargs='+',
@@ -162,6 +155,11 @@ def parse_args(args: List[str]) -> argparse.Namespace:
         action='store_true',
         required=False,
         help='All collected metrics will be printed to stdout via the logging framework.')
+    parser.add_argument(
+        '--skip-steps',
+        nargs='+',
+        choices=[stage.name for stage in stages],
+        help='Skip these steps')
     parser.add_argument(
         '--create-runtime-image',
         help='Create a Docker image with the specified name that contains all '
@@ -192,15 +190,15 @@ def cross_compile_pipeline(
         colcon_defaults_file=args.colcon_defaults)
 
     customizations = PipelineStageConfigOptions(
-        args.skip_rosdep_collection,
         skip_rosdep_keys,
         custom_rosdep_script,
         custom_data_dir,
         custom_setup_script)
 
     for stage in stages:
-        with data_collector.timer('{}'.format(stage.name)):
-            stage(platform, docker_client, ros_workspace_dir, customizations, data_collector)
+        if stage.name not in args.skip_steps:
+            with data_collector.timer('{}'.format(stage.name)):
+                stage(platform, docker_client, ros_workspace_dir, customizations, data_collector)
 
 
 def main():
