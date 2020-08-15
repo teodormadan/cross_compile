@@ -24,10 +24,10 @@ import sys
 from typing import List
 from typing import Optional
 
-from ros_cross_compile.builders import DockerBuildStage
+from ros_cross_compile.builders import CrossCompileBuild
 from ros_cross_compile.data_collector import DataCollector
 from ros_cross_compile.data_collector import DataWriter
-from ros_cross_compile.dependencies import DependenciesStage
+from ros_cross_compile.dependencies import CollectDependencies
 from ros_cross_compile.docker_client import DEFAULT_COLCON_DEFAULTS_FILE
 from ros_cross_compile.docker_client import DockerClient
 from ros_cross_compile.pipeline_stages import PipelineStageConfigOptions
@@ -35,11 +35,19 @@ from ros_cross_compile.platform import Platform
 from ros_cross_compile.platform import SUPPORTED_ARCHITECTURES
 from ros_cross_compile.platform import SUPPORTED_ROS2_DISTROS
 from ros_cross_compile.platform import SUPPORTED_ROS_DISTROS
-from ros_cross_compile.sysroot_creator import CreateSysrootStage
+from ros_cross_compile.runtime import PackageRuntimeImage
+from ros_cross_compile.sysroot_creator import CreateSysroot
 from ros_cross_compile.sysroot_creator import prepare_docker_build_environment
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+stages = [
+    CollectDependencies(),
+    CreateSysroot(),
+    CrossCompileBuild(),
+    PackageRuntimeImage(),
+]
 
 
 def _path_if(path: Optional[str] = None) -> Optional[Path]:
@@ -131,13 +139,6 @@ def parse_args(args: List[str]) -> argparse.Namespace:
         help='Relative path within the workspace to a file that provides colcon arguments. '
              'See "Package Selection and Build Customization" in README.md for more details.')
     parser.add_argument(
-        '--skip-rosdep-collection',
-        action='store_true',
-        required=False,
-        help='Skip querying rosdep for dependencies. This is intended to save time when running '
-             'repeatedly during development, but has undefined behavior if the dependencies of '
-             'the workspace have changed since the last time they were collected.')
-    parser.add_argument(
         '--skip-rosdep-keys',
         default=[],
         nargs='+',
@@ -154,6 +155,19 @@ def parse_args(args: List[str]) -> argparse.Namespace:
         action='store_true',
         required=False,
         help='All collected metrics will be printed to stdout via the logging framework.')
+    parser.add_argument(
+        '--skip-steps',
+        nargs='+',
+        choices=[stage.name for stage in stages],
+        default=[],
+        help='Skip these steps')
+    parser.add_argument(
+        '--runtime-tag',
+        type=str,
+        required=False,
+        default='cc-runtime',
+        help='Create a Docker image with the specified name that contains all '
+             'runtime dependencies and the created "install" directory for the workspace.')
 
     return parser.parse_args(args)
 
@@ -179,17 +193,17 @@ def cross_compile_pipeline(
         default_docker_dir=sysroot_build_context,
         colcon_defaults_file=args.colcon_defaults)
 
-    stages = [DependenciesStage(), CreateSysrootStage(), DockerBuildStage()]
     customizations = PipelineStageConfigOptions(
-        args.skip_rosdep_collection,
         skip_rosdep_keys,
         custom_rosdep_script,
         custom_data_dir,
-        custom_setup_script)
+        custom_setup_script,
+        args.runtime_tag)
 
     for stage in stages:
-        with data_collector.timer('{}'.format(stage.name)):
-            stage(platform, docker_client, ros_workspace_dir, customizations, data_collector)
+        if stage.name not in args.skip_steps:
+            with data_collector.timer('{}'.format(stage.name)):
+                stage(platform, docker_client, ros_workspace_dir, customizations, data_collector)
 
 
 def main():
