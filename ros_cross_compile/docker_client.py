@@ -11,13 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import io
 import logging
 from pathlib import Path
+import tarfile
 from typing import Dict
 from typing import Optional
 
 import docker
-from docker.utils import kwargs_from_env as docker_kwargs_from_env
+from tqdm import tqdm
 
 
 logging.basicConfig(level=logging.INFO)
@@ -64,7 +66,7 @@ class DockerClient:
         :raises docker.errors.BuildError: on build error
         """
         # Use low-level API to expose logs for image building
-        docker_api = docker.APIClient(**docker_kwargs_from_env())
+        docker_api = docker.APIClient(base_url='unix://var/run/docker.sock')
         log_generator = docker_api.build(
             path=str(dockerfile_dir) if dockerfile_dir else self._default_docker_dir,
             dockerfile=dockerfile_name,
@@ -87,8 +89,15 @@ class DockerClient:
                 raise docker.errors.BuildError(error_line)
             line = chunk.get('stream', '')
             line = line.rstrip()
-            if line:
-                logger.info(line)
+            if not line:
+                continue
+            # if line.startswith('Step '):
+            #     # e.g. "Step X/Y"
+            #     progress = line.split()[1]
+            #     current, total = progress.split('/')
+            #     current = int(current)
+            #     total = int(total)
+            logger.info(line)
 
     def run_container(
         self,
@@ -119,6 +128,7 @@ class DockerClient:
         # Note that the `run` kwarg `stream` is not available
         # in the version of dockerpy that we are using, so we must detach to live-stream logs
         # Do not `remove` so that the container can be queried for its exit code after finishing
+        logger.info("Running docker container of image {}".format(image_name))
         container = self._client.containers.run(
             image=image_name,
             name=container_name,
@@ -146,3 +156,11 @@ class DockerClient:
 
     def get_image_size(self, img_name: str) -> int:
         return self._client.images.get(img_name).attrs['Size']
+
+    def export_image_filesystem(self, image_tag: str):
+        container = self._client.containers.run(image=image_tag, detach=True)
+        export_response = container.export()
+        tar_bytes = export_response.read()
+        tar_file = io.BytesIO(tar_bytes)
+        tar = tarfile.open(fileobj=tar_file)
+        return tar

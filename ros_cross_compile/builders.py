@@ -64,3 +64,26 @@ class DockerBuildStage(PipelineStage):
                  pipeline_stage_config_options: PipelineStageConfigOptions,
                  data_collector: DataCollector):
         run_emulated_docker_build(docker_client, platform, ros_workspace_dir)
+
+
+def run_cross_compile_docker_build(
+    docker_client: DockerClient,
+    platform: Platform,
+    workspace_path: Path,
+) -> None:
+    docker_client.build_image(
+        dockerfile_name='build.Dockerfile',
+        tag=platform.build_image_tag,
+    )
+
+    docker_client.run_container(
+        image_name=platform.build_image_tag,
+        environment={
+            'OWNER_USER': str(os.getuid()),
+            'ROS_DISTRO': platform.ros_distro,
+            'TARGET_ARCH': platform.arch,
+        },
+        volumes={
+            workspace_path: '/ros_ws',
+        }
+    )

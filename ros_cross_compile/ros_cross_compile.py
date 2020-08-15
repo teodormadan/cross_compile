@@ -154,6 +154,10 @@ def parse_args(args: List[str]) -> argparse.Namespace:
         action='store_true',
         required=False,
         help='All collected metrics will be printed to stdout via the logging framework.')
+parser.add_argument(
+        '--create-runtime-image',
+        help='Create a Docker image with the specified name that contains all '
+             'runtime dependencies and the created "install" directory for the workspace.')
 
     return parser.parse_args(args)
 
