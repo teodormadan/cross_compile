@@ -51,9 +51,8 @@ setup(
         package_name: ['docker/*.*', 'mixins/*.*'],
     },
     install_requires=[
-        'docker>=2,<3',
+        'docker==4.*',
         'setuptools',
-        'tqdm',
     ],
     zip_safe=True,
     entry_points={

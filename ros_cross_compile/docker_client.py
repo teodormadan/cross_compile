@@ -19,13 +19,31 @@ from typing import Dict
 from typing import Optional
 
 import docker
-from tqdm import tqdm
-
+from docker.utils import kwargs_from_env as docker_kwargs_from_env
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('Docker Client')
 
 DEFAULT_COLCON_DEFAULTS_FILE = 'defaults.yaml'
+
+
+class GeneratorStream(io.RawIOBase):
+    def __init__(self, generator):
+        self.leftover = None
+        self.generator = generator
+
+    def readable(self):
+        return True
+
+    def readinto(self, b):
+        try:
+            length = len(b)  # : We're supposed to return at most this much
+            chunk = self.leftover or next(self.generator)
+            output, self.leftover = chunk[:length], chunk[length:]
+            b[:len(output)] = output
+            return len(output)
+        except StopIteration:
+            return 0  # : Indicate EOF
 
 
 class DockerClient:
@@ -66,7 +84,8 @@ class DockerClient:
         :raises docker.errors.BuildError: on build error
         """
         # Use low-level API to expose logs for image building
-        docker_api = docker.APIClient(base_url='unix://var/run/docker.sock')
+        docker_api = docker.APIClient(**docker_kwargs_from_env())
+        logger.info('Sending context to Docker client')
         log_generator = docker_api.build(
             path=str(dockerfile_dir) if dockerfile_dir else self._default_docker_dir,
             dockerfile=dockerfile_name,
@@ -89,15 +108,10 @@ class DockerClient:
                 raise docker.errors.BuildError(error_line)
             line = chunk.get('stream', '')
             line = line.rstrip()
-            if not line:
-                continue
-            # if line.startswith('Step '):
-            #     # e.g. "Step X/Y"
-            #     progress = line.split()[1]
-            #     current, total = progress.split('/')
-            #     current = int(current)
-            #     total = int(total)
-            logger.info(line)
+            if line:
+                logger.info(line)
+
+
 
     def run_container(
         self,
@@ -159,8 +173,7 @@ class DockerClient:
 
     def export_image_filesystem(self, image_tag: str):
         container = self._client.containers.run(image=image_tag, detach=True)
-        export_response = container.export()
-        tar_bytes = export_response.read()
-        tar_file = io.BytesIO(tar_bytes)
-        tar = tarfile.open(fileobj=tar_file)
+        export_generator = container.export()
+        stream = io.BufferedReader(GeneratorStream(export_generator))
+        tar = tarfile.open(fileobj=stream, mode='r|*')
         return tar

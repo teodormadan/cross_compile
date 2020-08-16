@@ -159,6 +159,7 @@ def parse_args(args: List[str]) -> argparse.Namespace:
         '--skip-steps',
         nargs='+',
         choices=[stage.name for stage in stages],
+        default=[],
         help='Skip these steps')
     parser.add_argument(
         '--create-runtime-image',
