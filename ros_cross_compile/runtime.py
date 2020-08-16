@@ -55,7 +55,9 @@ class PackageRuntimeImage(PipelineStage):
     def __init__(self):
         super().__init__('package_runtime')
 
-    def __call__(self, platform: Platform, docker_client: DockerClient, ros_workspace_dir: Path,
-                 pipeline_stage_config_options: PipelineStageConfigOptions,
-                 data_collector: DataCollector):
-        create_runtime_image(docker_client, platform, ros_workspace_dir, 'cc-runtime')
+    def __call__(
+        self, platform: Platform, docker_client: DockerClient, ros_workspace_dir: Path,
+        options: PipelineStageConfigOptions,
+        data_collector: DataCollector
+    ):
+        create_runtime_image(docker_client, platform, ros_workspace_dir, options.runtime_tag)

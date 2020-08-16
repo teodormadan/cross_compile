@@ -162,7 +162,10 @@ def parse_args(args: List[str]) -> argparse.Namespace:
         default=[],
         help='Skip these steps')
     parser.add_argument(
-        '--create-runtime-image',
+        '--runtime-tag',
+        type=str,
+        required=False,
+        default='cc-runtime',
         help='Create a Docker image with the specified name that contains all '
              'runtime dependencies and the created "install" directory for the workspace.')
 
@@ -194,7 +197,8 @@ def cross_compile_pipeline(
         skip_rosdep_keys,
         custom_rosdep_script,
         custom_data_dir,
-        custom_setup_script)
+        custom_setup_script,
+        args.runtime_tag)
 
     for stage in stages:
         if stage.name not in args.skip_steps:
