@@ -35,7 +35,7 @@ from ros_cross_compile.platform import Platform
 from ros_cross_compile.platform import SUPPORTED_ARCHITECTURES
 from ros_cross_compile.platform import SUPPORTED_ROS2_DISTROS
 from ros_cross_compile.platform import SUPPORTED_ROS_DISTROS
-# from ros_cross_compile.runtime import PackageRuntimeImage
+from ros_cross_compile.runtime import PackageRuntimeImage
 from ros_cross_compile.sysroot_creator import CreateSysroot
 from ros_cross_compile.sysroot_creator import prepare_docker_build_environment
 
@@ -46,7 +46,7 @@ stages = [
     CollectDependencies(),
     CreateSysroot(),
     CrossCompileBuild(),
-    # PackageRuntimeImage(),
+    PackageRuntimeImage(),
 ]
 
 

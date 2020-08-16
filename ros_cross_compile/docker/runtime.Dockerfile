@@ -10,5 +10,6 @@ WORKDIR /ros_ws
 ARG INSTALL_PATH
 COPY $INSTALL_PATH/ /ros_ws/install
 
-RUN echo "source /ros_ws/install/setup.bash" >> ~/.bashrc
+RUN echo "source /opt/ros/foxy/setup.bash" >> ~/.bashrc
+RUN echo "source /ros_ws/install/local_setup.bash" >> ~/.bashrc
 ENTRYPOINT /bin/bash

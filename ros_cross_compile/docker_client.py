@@ -111,8 +111,6 @@ class DockerClient:
             if line:
                 logger.info(line)
 
-
-
     def run_container(
         self,
         image_name: str,
